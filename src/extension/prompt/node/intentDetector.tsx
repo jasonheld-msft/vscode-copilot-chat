@@ -18,7 +18,6 @@ import { IExperimentationService } from '../../../platform/telemetry/common/null
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry';
 import { isNotebookCellOrNotebookChatInput } from '../../../util/common/notebooks';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
-import { Position, Range } from '../../../vscodeTypes';
 import { getAgentForIntent, GITHUB_PLATFORM_AGENT, Intent } from '../../common/constants';
 import { IIntentService } from '../../intents/node/intentService';
 import { UnknownIntent } from '../../intents/node/unknownIntent';
@@ -65,8 +64,8 @@ export class IntentDetector implements ChatParticipantDetectionProvider {
 		const { turns } = this.instantiationService.invokeFunction(accessor => addHistoryToConversation(accessor, context.history));
 		let detectedIntentId: string | ChatParticipantDetectionResult | undefined;
 		const shouldIncludeGitHub = (chatRequest.toolReferences.length === 0);
-		const builtinParticipants = options.participants?.filter(p => ((p.participant === GITHUB_PLATFORM_AGENT && shouldIncludeGitHub) || p.participant.startsWith(CHAT_PARTICIPANT_ID_PREFIX)) && p.disambiguation.length) ?? [];
-		const thirdPartyParticipants = options.participants?.filter(p => p.participant !== GITHUB_PLATFORM_AGENT && !p.participant.startsWith(CHAT_PARTICIPANT_ID_PREFIX) && p.disambiguation.length) ?? [];
+		const builtinParticipants = options.participants?.filter(p => p.participant && ((p.participant === GITHUB_PLATFORM_AGENT && shouldIncludeGitHub) || p.participant.startsWith(CHAT_PARTICIPANT_ID_PREFIX)) && p.disambiguation.length) ?? [];
+		const thirdPartyParticipants = options.participants?.filter(p => p.participant && p.participant !== GITHUB_PLATFORM_AGENT && !p.participant.startsWith(CHAT_PARTICIPANT_ID_PREFIX) && p.disambiguation.length) ?? [];
 
 		try {
 
@@ -312,9 +311,11 @@ export class IntentDetector implements ChatParticipantDetectionProvider {
 		}
 
 		const categoryNamesToParticipants = participants?.reduce<{ [categoryName: string]: { participant: string; command?: string } }>((acc, participant) => {
-			participant.disambiguation.forEach((alias) => {
-				acc[alias.category] = { participant: participant.participant, command: participant.command };
-			});
+			if (participant.participant) {
+				participant.disambiguation.forEach((alias) => {
+					acc[alias.category] = { participant: participant.participant, command: participant.command };
+				});
+			}
 			return acc;
 		}, {});
 
