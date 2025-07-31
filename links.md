@@ -13,6 +13,8 @@
 * [Issue #393](https://github.com/microsoft/vscode-copilot-chat/issues/393)
 * [Jason's Fork](https://github.com/jasonheld-msft/vscode-copilot-chat)
 * [PR - Issue #393](https://github.com/jasonheld-msft/vscode-copilot-chat/pull/1)
+* [PR #2](https://github.com/jasonheld-msft/vscode-copilot-chat/pull/2)
+* [Configuring Automatic Code Reviews](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/request-a-code-review/configure-automatic-review)
 
 ## AI Code Reviewer
 
