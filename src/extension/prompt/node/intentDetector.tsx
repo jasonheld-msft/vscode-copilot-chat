@@ -18,7 +18,6 @@ import { IExperimentationService } from '../../../platform/telemetry/common/null
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry';
 import { isNotebookCellOrNotebookChatInput } from '../../../util/common/notebooks';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
-import { Position, Range } from '../../../vscodeTypes';
 import { getAgentForIntent, GITHUB_PLATFORM_AGENT, Intent } from '../../common/constants';
 import { IIntentService } from '../../intents/node/intentService';
 import { UnknownIntent } from '../../intents/node/unknownIntent';
@@ -442,14 +441,14 @@ export class IntentDetector implements ChatParticipantDetectionProvider {
 		request: string,
 		preferredIntent: Intent | undefined,
 		currentFilePath: string | undefined,
-		fileExerpt: string | undefined,
+		fileExcerpt: string | undefined,
 		detectedIntent: string | undefined,
 		languageId: string | undefined,
 		isRerunWithoutIntentDetection: boolean | undefined,
 		historyMessages: Raw.ChatMessage[],
 		location: ChatLocation
 	) {
-		const { fileExcerpt, history } = this.prepareInternalTelemetryContext(fileExerpt, historyMessages);
+		const { fileExcerpt, history } = this.prepareInternalTelemetryContext(fileExcerpt, historyMessages);
 
 		this.telemetryService.sendInternalMSFTTelemetryEvent(
 			'intentDetection',
@@ -458,7 +457,7 @@ export class IntentDetector implements ChatParticipantDetectionProvider {
 				request,
 				preferredIntent: preferredIntent ?? '<none>',
 				filePath: currentFilePath ?? '<none>',
-				fileExerpt: fileExcerpt ?? '<none>',
+				fileExcerpt: fileExcerpt ?? '<none>',
 				detectedIntent: detectedIntent ?? '<none>',
 				languageId: languageId ?? '<none>',
 				isRerunWithoutIntentDetection: String(isRerunWithoutIntentDetection) ?? '<none>',
@@ -522,14 +521,19 @@ class IntentDetectionPrompt extends PromptElement<IntentDetectionPromptProps> {
 					new Position(Math.min(selection.end.line + 5, document.lineCount), document.lineAt(selection.end.line).text.length),
 				);
 				currentFileContext = document.getText(range);
-				fileExcerptCodeBlock = currentFileContext.trim().length > 0 ? <CodeBlock uri={currentFileUri} languageId={document.languageId} code={currentFileContext} shouldTrim={false} /> : undefined;
+				if (currentFileContext && currentFileContext.trim().length > 0) {
+					fileExcerptCodeBlock = <CodeBlock uri={currentFileUri} languageId={document.languageId} code={currentFileContext} shouldTrim={false} />;
+				} else {
+					fileExcerptCodeBlock = undefined;
+				}
 			}
 		} catch (_e) { }
 
 		const fileMetadata = new DocumentExcerptInfo(currentFileContext, currentFileUri?.path);
 
+		let filteredBuiltinParticipants = builtinParticipants;
 		if (documentContext !== undefined && isNotebookCellOrNotebookChatInput(documentContext.document.uri)) {
-			builtinParticipants = builtinParticipants.filter((participant) => participant.command !== 'tests');
+			filteredBuiltinParticipants = builtinParticipants.filter((participant) => participant.command !== 'tests');
 		}
 
 
@@ -567,7 +571,7 @@ class IntentDetectionPrompt extends PromptElement<IntentDetectionPromptProps> {
 					Request: {userQuestion}<br />
 					<br />
 					Available functions:<br />
-					{commands(builtinParticipants).map((alias) =>
+					{commands(filteredBuiltinParticipants).map((alias) =>
 						<>
 							Function Id: {alias.category}<br />
 							Function Description: {alias.description}<br />
@@ -576,7 +580,7 @@ class IntentDetectionPrompt extends PromptElement<IntentDetectionPromptProps> {
 					)}
 					<br />
 					Here are some examples to make the instructions clearer:<br />
-					{commands(builtinParticipants).map((alias) =>
+					{commands(filteredBuiltinParticipants).map((alias) =>
 						<>
 							Request: {alias.examples[0]}<br />
 							Response: {alias.category}<br />
@@ -612,7 +616,8 @@ class ParticipantDescriptions extends PromptElement<BuiltinParticipantDescriptio
 			})}
 			{this.props.includeDynamicParticipants && <>| github_questions | The user is asking about an issue, pull request, branch, commit hash, diff, discussion, repository, or published release on GitHub.com.  This category does not include performing local Git operations using the CLI. | "What has been changed in the pull request 1361 in browserify/browserify repo?" |<br /></>}
 			{this.props.includeDynamicParticipants && <>| web_questions | The user is asking a question that requires current knowledge from a web search engine. Such questions often reference time periods that exceed your knowledge cutoff. | "What is the latest LTS version of Node.js?" |<br /></>}
-			| unknown | The user's question does not fit exactly one of the categories above, is about a product other than Visual Studio Code or GitHub, or is a general question about code, code errors, or software engineering. | "How do I center a div in CSS?" |<br /></>);
+			{<>| unknown | The user's question does not fit exactly one of the categories above, is about a product other than Visual Studio Code or GitHub, or is a general question about code, code errors, or software engineering. | "How do I center a div in CSS?" |<br /></>}
+		</>);
 	}
 }
 
